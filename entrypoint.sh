@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-REPO_URL="${REPO_URL:-https://github.com/kilomayocom/background-configurator.git}"
+REPO_URL="${REPO_URL:-https://github.com/FilipChalupa/ask-code-http-cli.git}"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"

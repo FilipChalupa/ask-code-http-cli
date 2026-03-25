@@ -13,7 +13,7 @@ if [ -z "$GEMINI_API_KEY" ]; then
     exit 1
 fi
 
-REPO_URL="${REPO_URL:-https://github.com/kilomayocom/background-configurator.git}"
+REPO_URL="${REPO_URL:-https://github.com/FilipChalupa/ask-code-http-cli.git}"
 
 # Build authenticated URL if GITHUB_TOKEN is set
 if [ -n "$GITHUB_TOKEN" ]; then
