@@ -1,27 +1,42 @@
 #!/bin/bash
 set -e
 
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+}
+
+ask_claude() {
+    local question="$1"
+    log "Question received: $question"
+    log "Claude is thinking..."
+    claude -p --allowedTools "Read,Glob,Grep,WebFetch" "$question"
+    local status=$?
+    if [ $status -eq 0 ]; then
+        log "Done."
+    else
+        log "Claude exited with status $status"
+    fi
+    return $status
+}
+
 # If a question is passed as an argument, run Claude in non-interactive mode
 if [ $# -gt 0 ]; then
-    QUESTION="$*"
-    echo "--- Question: $QUESTION ---"
-    claude -p --allowedTools "Read,Glob,Grep,WebFetch" "$QUESTION"
+    ask_claude "$*"
     exit $?
 fi
 
 # If QUESTION env var is set (e.g. from Home Assistant / Slack), use that
 if [ -n "$QUESTION" ]; then
-    echo "--- Question: $QUESTION ---"
-    claude -p --allowedTools "Read,Glob,Grep,WebFetch" "$QUESTION"
+    ask_claude "$QUESTION"
     exit $?
 fi
 
 # Default: keep container alive waiting for questions via docker exec
-echo "ask-code-agent ready. Send questions with:"
-echo "  docker exec ask-code-agent claude -p 'your question here'"
-echo ""
-echo "Or restart the container with:"
-echo "  docker run --rm -e QUESTION='your question' ask-code-agent"
-echo ""
-echo "Waiting for input..."
+log "ask-code-agent ready (working dir: $(pwd))"
+log "Repo contents: $(ls -1 | head -10)"
+log ""
+log "Send questions with:"
+log "  docker exec ask-code-agent claude -p 'your question here'"
+log ""
+log "Idle — waiting for docker exec calls..."
 tail -f /dev/null
