@@ -1,11 +1,12 @@
-FROM debian:bookworm-slim
+FROM node:22-bookworm-slim
 
 RUN apt-get update && apt-get install -y \
     git \
-    curl \
-    jq \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Gemini CLI
+RUN npm install -g @google/gemini-cli
 
 # Repo is cloned at runtime (needs GITHUB_TOKEN for private repos)
 RUN mkdir -p /repo

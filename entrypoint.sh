@@ -54,7 +54,7 @@ log "ask-code-agent ready (working dir: $(pwd))"
 log "Repo contents: $(ls -1 | head -10)"
 log ""
 log "Send questions with:"
-log "  docker exec ask-code-agent /ask.sh 'your question here'"
+log "  docker exec ask-code-agent /ask.sh 'your question'"
 log ""
 log "Idle — waiting for docker exec calls..."
 tail -f /dev/null
