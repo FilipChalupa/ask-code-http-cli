@@ -7,4 +7,9 @@ services:
       - QUESTION=${QUESTION:-}
     ports:
       - "3000:3000"
+    volumes:
+      - repo:/repo
     restart: unless-stopped
+
+volumes:
+  repo:
