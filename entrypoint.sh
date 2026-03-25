@@ -49,12 +49,10 @@ if [ -n "$QUESTION" ]; then
     exit $?
 fi
 
-# Default: keep container alive waiting for docker exec calls
+# Default: start web server (docker exec /ask.sh still works too)
 log "ask-code-agent ready (working dir: $(pwd))"
 log "Repo contents: $(ls -1 | head -10)"
 log ""
-log "Send questions with:"
-log "  docker exec ask-code-agent /ask.sh 'your question'"
-log ""
-log "Idle — waiting for docker exec calls..."
-tail -f /dev/null
+log "HTTP server starting on port ${PORT:-3000}"
+log "CLI still available: docker exec ask-code-agent /ask.sh 'your question'"
+exec node /server.js

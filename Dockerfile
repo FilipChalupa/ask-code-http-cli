@@ -13,6 +13,7 @@ RUN mkdir -p /repo
 WORKDIR /repo
 
 COPY ask.sh /ask.sh
+COPY server.js /server.js
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /ask.sh /entrypoint.sh
 
