@@ -13,7 +13,7 @@ if [ -z "$GEMINI_API_KEY" ]; then
     exit 1
 fi
 
-MODEL="${GEMINI_MODEL:-gemini-2.0-flash}"
+MODEL="${GEMINI_MODEL:-gemini-2.5-flash}"
 API_URL="https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}"
 
 # Gather all source files from the repo into a single context string
