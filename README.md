@@ -19,18 +19,31 @@ Docker container that answers questions about the [ask-code-http-cli](https://gi
 
 ## Usage
 
-### Ask a question
+### HTTP server (default)
+
+The container starts an HTTP server on port 3000. Send a POST request with the question as the body:
+
+```bash
+curl -X POST http://localhost:3000 -d "What does main.js do?"
+```
+
+#### Home Assistant rest_command example
+
+```yaml
+rest_command:
+  ask_code:
+    url: "http://localhost:3000"
+    method: POST
+    payload: "{{ question }}"
+    content_type: "text/plain"
+```
+
+### CLI
+
+You can also ask questions directly via `docker exec`:
 
 ```bash
 docker exec ask-code-agent /ask.sh "What does main.js do?"
-```
-
-### Home Assistant shell_command example
-
-```yaml
-shell_command:
-  ask_code: >-
-    docker exec ask-code-agent /ask.sh "{{ question }}"
 ```
 
 ### One-shot via environment variable
