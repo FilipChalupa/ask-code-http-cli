@@ -7,9 +7,8 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Shallow clone the target repository
-RUN git clone --depth 1 https://github.com/kilomayocom/background-configurator.git /repo
-
+# Repo is cloned at runtime (needs GITHUB_TOKEN for private repos)
+RUN mkdir -p /repo
 WORKDIR /repo
 
 COPY ask.sh /ask.sh

@@ -1,9 +1,27 @@
 #!/bin/bash
 set -e
 
+REPO_URL="${REPO_URL:-https://github.com/kilomayocom/background-configurator.git}"
+
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
+
+# Build the authenticated git URL if GITHUB_TOKEN is set
+repo_auth_url() {
+    if [ -n "$GITHUB_TOKEN" ]; then
+        echo "$REPO_URL" | sed "s|https://|https://${GITHUB_TOKEN}@|"
+    else
+        echo "$REPO_URL"
+    fi
+}
+
+# Clone repo on first start
+if [ ! -d /repo/.git ]; then
+    log "Cloning repository..."
+    git clone --depth 1 "$(repo_auth_url)" /repo
+    log "Clone complete."
+fi
 
 ask() {
     local question="$1"
