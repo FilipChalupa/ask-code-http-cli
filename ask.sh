@@ -16,6 +16,12 @@ fi
 MODEL="${GEMINI_MODEL:-gemini-2.5-flash}"
 API_URL="https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}"
 
+# Always fetch the latest main branch before answering
+echo "Fetching latest code..." >&2
+git -C /repo fetch --depth 1 origin main 2>/dev/null && \
+    git -C /repo reset --hard origin/main 2>/dev/null || \
+    echo "Warning: could not update repo, using cached version" >&2
+
 # Gather all source files from the repo into a single context string
 REPO_CONTEXT=""
 for f in $(find /repo -maxdepth 2 -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name '*.md' \) ! -path '*node_modules*' ! -path '*.git*' | sort); do

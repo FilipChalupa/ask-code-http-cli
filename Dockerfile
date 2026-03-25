@@ -7,8 +7,8 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Clone the target repository
-RUN git clone https://github.com/kilomayocom/background-configurator.git /repo
+# Shallow clone the target repository
+RUN git clone --depth 1 https://github.com/kilomayocom/background-configurator.git /repo
 
 WORKDIR /repo
 
