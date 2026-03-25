@@ -2,8 +2,7 @@ services:
   agent:
     build: .
     container_name: ask-code-agent
+    env_file: .env
     environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      # Pass a question via env var, or leave empty to keep container alive
-      # - QUESTION=What does main.js do?
+      - QUESTION=${QUESTION:-}
     restart: unless-stopped
