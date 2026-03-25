@@ -32,31 +32,36 @@ git -C /repo fetch --depth 1 origin main 2>/dev/null && \
     git -C /repo reset --hard origin/main 2>/dev/null || \
     echo "Warning: could not update repo, using cached version" >&2
 
-# Gather all source files from the repo into a single context string
-REPO_CONTEXT=""
-for f in $(find /repo -maxdepth 2 -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name '*.md' \) ! -path '*node_modules*' ! -path '*.git*' | sort); do
-    REPO_CONTEXT="${REPO_CONTEXT}
---- FILE: ${f} ---
-$(cat "$f")
-"
+# Gather all source files from the repo into a temp file (avoids arg list too long)
+CONTEXT_FILE=$(mktemp)
+trap "rm -f $CONTEXT_FILE" EXIT
+
+find /repo -maxdepth 3 -type f \( -name '*.html' -o -name '*.js' -o -name '*.ts' -o -name '*.tsx' -o -name '*.jsx' -o -name '*.css' -o -name '*.json' -o -name '*.md' -o -name '*.py' -o -name '*.yml' -o -name '*.yaml' \) \
+    ! -path '*node_modules*' ! -path '*.git*' ! -path '*dist*' ! -path '*build*' ! -path '*.next*' ! -path '*package-lock*' ! -path '*yarn.lock*' \
+    | sort | while read -r f; do
+    echo "--- FILE: ${f} ---" >> "$CONTEXT_FILE"
+    head -c 50000 "$f" >> "$CONTEXT_FILE"
+    echo "" >> "$CONTEXT_FILE"
 done
 
-SYSTEM_PROMPT="You are a helpful code assistant. You have access to the full source code of the 'background-configurator' repository below. Answer the user's question based on this code. Be concise and specific. If the question is in Czech, answer in Czech.
+SYSTEM_PROMPT="You are a helpful code assistant. You have access to source code from the repository below. Answer the user's question based on this code. Be concise and specific. If the question is in Czech, answer in Czech."
 
-${REPO_CONTEXT}"
+# Build JSON payload using jq with file input to avoid argument length limits
+PAYLOAD_FILE=$(mktemp)
+trap "rm -f $CONTEXT_FILE $PAYLOAD_FILE" EXIT
 
-# Build JSON payload using jq to properly escape strings
-PAYLOAD=$(jq -n \
+jq -n \
     --arg system "$SYSTEM_PROMPT" \
+    --rawfile code "$CONTEXT_FILE" \
     --arg question "$QUESTION" \
     '{
-        "system_instruction": {"parts": [{"text": $system}]},
+        "system_instruction": {"parts": [{"text": ($system + "\n\n" + $code)}]},
         "contents": [{"parts": [{"text": $question}]}]
-    }')
+    }' > "$PAYLOAD_FILE"
 
 RESPONSE=$(curl -s -X POST "$API_URL" \
     -H "Content-Type: application/json" \
-    -d "$PAYLOAD")
+    -d @"$PAYLOAD_FILE")
 
 # Extract the text from the response
 ANSWER=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
