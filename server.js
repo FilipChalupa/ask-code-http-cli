@@ -9,15 +9,18 @@ let running = false
 function processQueue() {
 	if (running || queue.length === 0) return
 	running = true
-	const { question, res } = queue.shift()
+	const { question, sessionId, res } = queue.shift()
 
 	console.log(
-		`[${new Date().toISOString()}] Processing: ${question} (${queue.length} queued)`,
+		`[${new Date().toISOString()}] Processing: ${question}${sessionId ? ` (session: ${sessionId})` : ''} (${queue.length} queued)`,
 	)
+
+	const args = [question]
+	if (sessionId) args.push(sessionId)
 
 	execFile(
 		'/ask.sh',
-		[question],
+		args,
 		{ timeout: 300000 },
 		(err, stdout, stderr) => {
 			running = false
@@ -26,9 +29,27 @@ function processQueue() {
 				res.writeHead(500, { 'Content-Type': 'text/plain' })
 				res.end(stderr || err.message)
 			} else {
-				console.log(`[${new Date().toISOString()}] Done.`)
-				res.writeHead(200, { 'Content-Type': 'text/plain' })
-				res.end(stdout)
+				// Split off SESSION_ID: line from the end of stdout
+				const lines = stdout.trimEnd().split('\n')
+				let geminiSessionId = null
+				if (
+					lines.length > 0 &&
+					lines[lines.length - 1].startsWith('SESSION_ID:')
+				) {
+					geminiSessionId = lines.pop().replace('SESSION_ID:', '')
+				}
+				const answer = lines.join('\n')
+
+				console.log(
+					`[${new Date().toISOString()}] Done.${geminiSessionId ? ` (gemini session: ${geminiSessionId})` : ''}`,
+				)
+
+				const headers = { 'Content-Type': 'text/plain' }
+				if (sessionId) {
+					headers['X-Session-Id'] = sessionId
+				}
+				res.writeHead(200, headers)
+				res.end(answer)
 			}
 			processQueue()
 		},
@@ -48,6 +69,8 @@ const server = http.createServer((req, res) => {
 		return
 	}
 
+	const sessionId = req.headers['x-session-id'] || null
+
 	let body = ''
 	req.on('data', (chunk) => (body += chunk))
 	req.on('end', () => {
@@ -59,9 +82,9 @@ const server = http.createServer((req, res) => {
 		}
 
 		console.log(
-			`[${new Date().toISOString()}] Queued: ${question} (${queue.length + 1} total)`,
+			`[${new Date().toISOString()}] Queued: ${question}${sessionId ? ` (session: ${sessionId})` : ''} (${queue.length + 1} total)`,
 		)
-		queue.push({ question, res })
+		queue.push({ question, sessionId, res })
 		processQueue()
 	})
 })

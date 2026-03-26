@@ -9,7 +9,9 @@ services:
       - "3000:3000"
     volumes:
       - repo:/repo
+      - sessions:/sessions
     restart: unless-stopped
 
 volumes:
   repo:
+  sessions:

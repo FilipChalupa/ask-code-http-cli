@@ -27,6 +27,31 @@ The container starts an HTTP server on port 3000. Send a POST request with the q
 curl -X POST http://localhost:3000 -d "What does main.js do?"
 ```
 
+#### Conversation sessions
+
+Use the `X-Session-Id` header to maintain context across follow-up questions. You can use any string as the session ID (e.g. Slack thread timestamps):
+
+```bash
+# First question — starts a new session
+curl -X POST http://localhost:3000 \
+  -H "X-Session-Id: 1711234567.123456" \
+  -d "What does the auth module do?"
+
+# Follow-up — same session ID preserves context
+curl -X POST http://localhost:3000 \
+  -H "X-Session-Id: 1711234567.123456" \
+  -d "How does it handle token refresh?"
+```
+
+Without the header, each request is stateless.
+
+#### Health check
+
+```bash
+curl http://localhost:3000
+# Returns: ok, queue length, busy status
+```
+
 #### Home Assistant rest_command example
 
 ```yaml

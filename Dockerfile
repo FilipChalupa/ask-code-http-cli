@@ -2,6 +2,7 @@ FROM node:22-bookworm-slim
 
 RUN apt-get update && apt-get install -y \
     git \
+    jq \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -9,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 RUN npm install -g @google/gemini-cli
 
 # Repo is cloned at runtime (needs GITHUB_TOKEN for private repos)
-RUN mkdir -p /repo
+RUN mkdir -p /repo /sessions
 WORKDIR /repo
 
 COPY ask.sh /ask.sh
