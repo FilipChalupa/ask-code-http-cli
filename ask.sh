@@ -25,7 +25,7 @@ fi
 # Always fetch the latest main branch before answering
 echo "Fetching latest code..." >&2
 git -C /repo remote set-url origin "$AUTH_URL" 2>/dev/null
-git -C /repo fetch --depth 1 origin main 2>/dev/null && \
+git -C /repo fetch origin main 2>/dev/null && \
     git -C /repo reset --hard origin/main >/dev/null 2>/dev/null || \
     echo "Warning: could not update repo, using cached version" >&2
 

@@ -19,7 +19,7 @@ repo_auth_url() {
 # Clone repo on first start
 if [ ! -d /repo/.git ]; then
     log "Cloning repository..."
-    git clone --depth 1 "$(repo_auth_url)" /repo
+    git clone "$(repo_auth_url)" /repo
     log "Clone complete."
 fi
 
