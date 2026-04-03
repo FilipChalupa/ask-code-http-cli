@@ -39,7 +39,14 @@ if [ ! -f "$SESSIONS_FILE" ]; then
 fi
 
 # Build gemini command
-GEMINI_ARGS=(-p "If the question is in Czech, answer in Czech. Be concise and specific. Question: $QUESTION" -o json)
+# Build prompt with optional Linear context
+PROMPT="If the question is in Czech, answer in Czech. Be concise and specific."
+if [ -n "$LINEAR_API_KEY" ]; then
+    PROMPT="$PROMPT When relevant, search Linear for issues, comments, and project context to enrich your answer."
+fi
+PROMPT="$PROMPT Question: $QUESTION"
+
+GEMINI_ARGS=(-p "$PROMPT" -o json)
 
 # Look up Gemini UUID from session mapping
 if [ -n "$SESSION_ID" ]; then
