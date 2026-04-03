@@ -25,8 +25,15 @@ configure_mcp() {
 
     if [ -n "$LINEAR_API_KEY" ]; then
         log "Configuring Linear MCP server..."
-        mcp_servers=$(echo "$mcp_servers" | jq --arg key "$LINEAR_API_KEY" \
-            '.linear = {"command": "linear-mcp-server", "env": {"LINEAR_API_KEY": $key}}')
+        # Create wrapper script that passes env to MCP server
+        cat > /linear-mcp.sh <<WRAPPER
+#!/bin/bash
+export LINEAR_API_KEY="$LINEAR_API_KEY"
+exec linear-mcp
+WRAPPER
+        chmod +x /linear-mcp.sh
+        mcp_servers=$(echo "$mcp_servers" | jq \
+            '.linear = {"command": "/linear-mcp.sh"}')
     fi
 
     echo "{\"mcpServers\": $mcp_servers}" | jq . > "$gemini_dir/settings.json"
