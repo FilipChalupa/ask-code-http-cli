@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Gemini CLI and MCP servers
-RUN npm install -g @google/gemini-cli @linear/mcp-server
+RUN npm install -g @google/gemini-cli linear-mcp-server
 
 # Repo is cloned at runtime (needs GITHUB_TOKEN for private repos)
 RUN mkdir -p /repo /sessions
