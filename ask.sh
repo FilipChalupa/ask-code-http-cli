@@ -61,7 +61,8 @@ fi
 # Run Gemini CLI (extract only the JSON object from output, MCP logs may precede it)
 cd /repo
 RAW_OUTPUT=$(gemini "${GEMINI_ARGS[@]}" 2>/dev/null)
-RESPONSE=$(echo "$RAW_OUTPUT" | sed -n '/^{/,$p')
+# Strip any non-JSON prefix (MCP logs may be prepended without newline)
+RESPONSE=$(echo "$RAW_OUTPUT" | perl -0777 -pe 's/^.*?(?=\{)//s')
 
 # Parse JSON output
 ANSWER=$(echo "$RESPONSE" | jq -r '.response // empty')
