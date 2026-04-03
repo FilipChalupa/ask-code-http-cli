@@ -58,9 +58,10 @@ if [ -n "$SESSION_ID" ]; then
     fi
 fi
 
-# Run Gemini CLI
+# Run Gemini CLI (extract only the JSON object from output, MCP logs may precede it)
 cd /repo
-RESPONSE=$(gemini "${GEMINI_ARGS[@]}" 2>/dev/null)
+RAW_OUTPUT=$(gemini "${GEMINI_ARGS[@]}" 2>/dev/null)
+RESPONSE=$(echo "$RAW_OUTPUT" | sed -n '/^{/,$p')
 
 # Parse JSON output
 ANSWER=$(echo "$RESPONSE" | jq -r '.response // empty')
