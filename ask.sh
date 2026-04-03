@@ -38,7 +38,6 @@ if [ ! -f "$SESSIONS_FILE" ]; then
     echo '{}' > "$SESSIONS_FILE"
 fi
 
-# Build gemini command
 # Build prompt with optional Linear context
 PROMPT="If the question is in Czech, answer in Czech. Be concise and specific."
 if [ -n "$LINEAR_API_KEY" ]; then
