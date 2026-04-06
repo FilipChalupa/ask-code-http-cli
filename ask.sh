@@ -45,7 +45,7 @@ if [ -n "$LINEAR_API_KEY" ]; then
 fi
 PROMPT="$PROMPT Question: $QUESTION"
 
-GEMINI_ARGS=(-p "$PROMPT" -o json)
+GEMINI_ARGS=(-p "$PROMPT" -o json --allowed-mcp-server-names linear)
 
 # Look up Gemini UUID from session mapping
 if [ -n "$SESSION_ID" ]; then
