@@ -49,7 +49,7 @@ function processQueue() {
 					headers['X-Session-Id'] = sessionId
 				}
 				res.writeHead(200, headers)
-				res.end(answer)
+				res.end(answer + '\n')
 			}
 			processQueue()
 		},

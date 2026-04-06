@@ -16,6 +16,31 @@ repo_auth_url() {
     fi
 }
 
+# Configure Gemini CLI MCP servers
+configure_mcp() {
+    local gemini_dir="$HOME/.gemini"
+    mkdir -p "$gemini_dir"
+
+    local mcp_servers="{}"
+
+    if [ -n "$LINEAR_API_KEY" ]; then
+        log "Configuring Linear MCP server..."
+        # Create wrapper script that passes env to MCP server
+        cat > /linear-mcp.sh <<WRAPPER
+#!/bin/bash
+export LINEAR_API_KEY="$LINEAR_API_KEY"
+exec linear-mcp
+WRAPPER
+        chmod +x /linear-mcp.sh
+        mcp_servers=$(echo "$mcp_servers" | jq \
+            '.linear = {"command": "/linear-mcp.sh"}')
+    fi
+
+    echo "{\"mcpServers\": $mcp_servers}" | jq . > "$gemini_dir/settings.json"
+}
+
+configure_mcp
+
 # Clone repo on first start
 if [ ! -d /repo/.git ]; then
     log "Cloning repository..."

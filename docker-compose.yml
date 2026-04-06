@@ -6,7 +6,7 @@ services:
     environment:
       - QUESTION=${QUESTION:-}
     ports:
-      - "3000:3000"
+      - "${HOST_PORT:-3000}:3000"
     volumes:
       - repo:/repo
       - sessions:/sessions

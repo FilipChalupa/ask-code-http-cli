@@ -6,8 +6,8 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Gemini CLI
-RUN npm install -g @google/gemini-cli
+# Install Gemini CLI and MCP servers
+RUN npm install -g @google/gemini-cli @hatcloud/linear-mcp
 
 # Repo is cloned at runtime (needs GITHUB_TOKEN for private repos)
 RUN mkdir -p /repo /sessions

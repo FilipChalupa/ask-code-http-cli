@@ -6,16 +6,43 @@ Docker container that answers questions about the [ask-code-http-cli](https://gi
 
 1. Get a free Gemini API key at https://aistudio.google.com/apikey
 
-2. Add it to `.env`:
+2. Copy `.env.sample` to `.env` and fill in your values:
+
+   ```bash
+   cp .env.sample .env
+   ```
 
    ```
    GEMINI_API_KEY=AIza...
+   REPO_URL=https://github.com/your-org/your-repo.git
    ```
 
 3. Build and start:
    ```bash
    docker compose up -d --build
    ```
+
+### Optional: Private repositories
+
+For private repos, create a fine-grained GitHub PAT with **Contents: read** permission and add it to `.env`:
+
+```
+GITHUB_TOKEN=github_pat_...
+```
+
+### Optional: Linear integration
+
+The agent can also search [Linear](https://linear.app) for relevant issues, comments, and project context when answering questions.
+
+1. In Linear, go to **Settings > API > Personal API keys**
+2. Create a new key (read access is sufficient)
+3. Add it to `.env`:
+
+   ```
+   LINEAR_API_KEY=lin_api_...
+   ```
+
+When configured, the agent automatically queries Linear for context related to the question alongside the codebase search. If the key is not set, the agent works with the codebase only.
 
 ## Usage
 

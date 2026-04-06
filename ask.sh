@@ -38,8 +38,14 @@ if [ ! -f "$SESSIONS_FILE" ]; then
     echo '{}' > "$SESSIONS_FILE"
 fi
 
-# Build gemini command
-GEMINI_ARGS=(-p "If the question is in Czech, answer in Czech. Be concise and specific. Question: $QUESTION" -o json)
+# Build prompt with optional Linear context
+PROMPT="If the question is in Czech, answer in Czech. Be concise and specific."
+if [ -n "$LINEAR_API_KEY" ]; then
+    PROMPT="$PROMPT When relevant, search Linear for issues, comments, and project context to enrich your answer."
+fi
+PROMPT="$PROMPT Question: $QUESTION"
+
+GEMINI_ARGS=(-p "$PROMPT" -o json --allowed-mcp-server-names linear)
 
 # Look up Gemini UUID from session mapping
 if [ -n "$SESSION_ID" ]; then
@@ -52,9 +58,11 @@ if [ -n "$SESSION_ID" ]; then
     fi
 fi
 
-# Run Gemini CLI
+# Run Gemini CLI (extract only the JSON object from output, MCP logs may precede it)
 cd /repo
-RESPONSE=$(gemini "${GEMINI_ARGS[@]}" 2>/dev/null)
+RAW_OUTPUT=$(gemini "${GEMINI_ARGS[@]}" 2>/dev/null)
+# Strip any non-JSON prefix (MCP logs may be prepended without newline)
+RESPONSE=$(echo "$RAW_OUTPUT" | perl -0777 -pe 's/^.*?(?=\{)//s')
 
 # Parse JSON output
 ANSWER=$(echo "$RESPONSE" | jq -r '.response // empty')
