@@ -98,6 +98,10 @@ You can also ask questions directly via `docker exec`:
 docker exec ask-code-agent /ask.sh "What does main.js do?"
 ```
 
+### Verbose mode
+
+Set `VERBOSE=1` in `.env` to enable debug output (fetching status, session resuming). Disabled by default.
+
 ### One-shot via environment variable
 
 ```bash
