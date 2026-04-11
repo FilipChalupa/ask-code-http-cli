@@ -9,7 +9,7 @@ SESSIONS_FILE="/sessions/sessions.json"
 VERBOSE="${VERBOSE:-0}"
 
 debug() {
-    [ "$VERBOSE" = "1" ] && echo "$@" >&2
+    [ "$VERBOSE" = "1" ] && echo "$@" >&2 || true
 }
 
 if [ -z "$QUESTION" ]; then
