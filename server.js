@@ -25,7 +25,8 @@ function processQueue() {
 		(err, stdout, stderr) => {
 			running = false
 			if (err) {
-				console.error(`[${new Date().toISOString()}] Error: ${err.message}`)
+				console.error(`[${new Date().toISOString()}] Error (code=${err.code}, signal=${err.signal}): ${err.message}`)
+				if (stderr) console.error(`[${new Date().toISOString()}] Stderr: ${stderr}`)
 				res.writeHead(500, { 'Content-Type': 'text/plain' })
 				res.end(stderr || err.message)
 			} else {
