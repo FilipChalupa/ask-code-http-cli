@@ -6,6 +6,11 @@ set -e
 QUESTION="$1"
 SESSION_ID="$2"
 SESSIONS_FILE="/sessions/sessions.json"
+VERBOSE="${VERBOSE:-0}"
+
+debug() {
+    [ "$VERBOSE" = "1" ] && echo "$@" >&2
+}
 
 if [ -z "$QUESTION" ]; then
     echo "Usage: ask.sh 'your question' [session-id]" >&2
@@ -27,7 +32,7 @@ else
 fi
 
 # Always fetch the latest main branch before answering
-echo "Fetching latest code..." >&2
+debug "Fetching latest code..."
 git -C /repo remote set-url origin "$AUTH_URL" 2>/dev/null
 git -C /repo fetch origin main 2>/dev/null && \
     git -C /repo reset --hard origin/main >/dev/null 2>/dev/null || \
@@ -52,9 +57,9 @@ if [ -n "$SESSION_ID" ]; then
     GEMINI_UUID=$(jq -r --arg sid "$SESSION_ID" '.[$sid] // empty' "$SESSIONS_FILE")
     if [ -n "$GEMINI_UUID" ]; then
         GEMINI_ARGS+=(--resume "$GEMINI_UUID")
-        echo "Resuming session $SESSION_ID -> $GEMINI_UUID" >&2
+        debug "Resuming session $SESSION_ID -> $GEMINI_UUID"
     else
-        echo "New session: $SESSION_ID" >&2
+        debug "New session: $SESSION_ID"
     fi
 fi
 
