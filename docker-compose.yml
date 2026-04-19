@@ -10,10 +10,8 @@ services:
     volumes:
       - repo:/repo
       - sessions:/sessions
-      - shared-memory:/shared-memory
     restart: unless-stopped
 
 volumes:
   repo:
   sessions:
-  shared-memory:
