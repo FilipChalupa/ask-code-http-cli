@@ -7,6 +7,8 @@ QUESTION="$1"
 SESSION_ID="$2"
 SESSIONS_FILE="/sessions/sessions.json"
 VERBOSE="${VERBOSE:-0}"
+SHARED_MEMORY="${SHARED_MEMORY:-0}"
+SHARED_MEMORY_DIR="/shared-memory"
 
 debug() {
     [ "$VERBOSE" = "1" ] && echo "$@" >&2 || true
@@ -47,6 +49,10 @@ fi
 PROMPT="If the question is in Czech, answer in Czech. Be concise and specific. Do not modify any code - your task is only to analyze and answer questions, not to develop. Any code changes will be reset on the next query, so making edits is pointless."
 if [ -n "$LINEAR_API_KEY" ]; then
     PROMPT="$PROMPT When relevant, search Linear for issues, comments, and project context to enrich your answer."
+fi
+if [ "$SHARED_MEMORY" = "1" ]; then
+    mkdir -p "$SHARED_MEMORY_DIR"
+    PROMPT="$PROMPT You have a persistent shared memory directory at $SHARED_MEMORY_DIR that survives between queries (the repo itself is reset each query, but this directory is not). Feel free to read existing notes there at the start and to write down any facts, findings, or context that might be useful for answering future questions. Organize notes into readable files (e.g. markdown) and keep them concise and accurate."
 fi
 PROMPT="$PROMPT Question: $QUESTION"
 
