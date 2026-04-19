@@ -44,7 +44,7 @@ if [ ! -f "$SESSIONS_FILE" ]; then
 fi
 
 # Build prompt with optional Linear context
-PROMPT="If the question is in Czech, answer in Czech. Be concise and specific."
+PROMPT="If the question is in Czech, answer in Czech. Be concise and specific. Do not modify any code - your task is only to analyze and answer questions, not to develop. Any code changes will be reset on the next query, so making edits is pointless."
 if [ -n "$LINEAR_API_KEY" ]; then
     PROMPT="$PROMPT When relevant, search Linear for issues, comments, and project context to enrich your answer."
 fi
