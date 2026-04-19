@@ -70,34 +70,10 @@ if [ -n "$SESSION_ID" ]; then
     fi
 fi
 
-# Run Gemini CLI (extract only the JSON object from output, MCP logs may precede it)
+# Run Gemini CLI (extract only the JSON object from output, MCP logs may precede it).
+# stderr is passed through so server.js logs it if gemini fails.
 cd /repo
-GEMINI_STDERR=$(mktemp)
-trap 'rm -f "$GEMINI_STDERR"' EXIT
-set +e
-RAW_OUTPUT=$(gemini "${GEMINI_ARGS[@]}" 2>"$GEMINI_STDERR")
-GEMINI_EXIT=$?
-set -e
-
-# If --resume pointed at a session Gemini no longer has, drop the stale
-# mapping and retry without --resume.
-if [ "$GEMINI_EXIT" -ne 0 ] && [ -n "$GEMINI_UUID" ] && \
-        grep -q "Invalid session identifier" "$GEMINI_STDERR"; then
-    debug "Stale Gemini session $GEMINI_UUID, retrying without --resume"
-    jq --arg sid "$SESSION_ID" 'del(.[$sid])' "$SESSIONS_FILE" > "${SESSIONS_FILE}.tmp" && \
-        mv "${SESSIONS_FILE}.tmp" "$SESSIONS_FILE"
-    GEMINI_ARGS=(-p "$PROMPT" -o json --allowed-mcp-server-names linear -y)
-    set +e
-    RAW_OUTPUT=$(gemini "${GEMINI_ARGS[@]}" 2>"$GEMINI_STDERR")
-    GEMINI_EXIT=$?
-    set -e
-fi
-
-if [ "$GEMINI_EXIT" -ne 0 ]; then
-    echo "Gemini failed (exit $GEMINI_EXIT):" >&2
-    cat "$GEMINI_STDERR" >&2
-    exit "$GEMINI_EXIT"
-fi
+RAW_OUTPUT=$(gemini "${GEMINI_ARGS[@]}")
 # Strip any non-JSON prefix (MCP logs may be prepended without newline)
 RESPONSE=$(echo "$RAW_OUTPUT" | perl -0777 -pe 's/^.*?(?=\{)//s')
 
