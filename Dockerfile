@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 RUN npm install -g @google/gemini-cli @hatcloud/linear-mcp
 
 # Repo is cloned at runtime (needs GITHUB_TOKEN for private repos)
-RUN mkdir -p /repo /sessions
+RUN mkdir -p /repo
 WORKDIR /repo
 
 COPY ask.sh /ask.sh

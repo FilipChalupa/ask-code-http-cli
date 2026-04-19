@@ -41,6 +41,7 @@ git -C /repo fetch origin main 2>/dev/null && \
     echo "Warning: could not update repo, using cached version" >&2
 
 # Ensure sessions file exists
+mkdir -p "$(dirname "$SESSIONS_FILE")"
 if [ ! -f "$SESSIONS_FILE" ]; then
     echo '{}' > "$SESSIONS_FILE"
 fi
@@ -71,7 +72,32 @@ fi
 
 # Run Gemini CLI (extract only the JSON object from output, MCP logs may precede it)
 cd /repo
-RAW_OUTPUT=$(gemini "${GEMINI_ARGS[@]}" 2>/dev/null)
+GEMINI_STDERR=$(mktemp)
+trap 'rm -f "$GEMINI_STDERR"' EXIT
+set +e
+RAW_OUTPUT=$(gemini "${GEMINI_ARGS[@]}" 2>"$GEMINI_STDERR")
+GEMINI_EXIT=$?
+set -e
+
+# If --resume pointed at a session Gemini no longer has, drop the stale
+# mapping and retry without --resume.
+if [ "$GEMINI_EXIT" -ne 0 ] && [ -n "$GEMINI_UUID" ] && \
+        grep -q "Invalid session identifier" "$GEMINI_STDERR"; then
+    debug "Stale Gemini session $GEMINI_UUID, retrying without --resume"
+    jq --arg sid "$SESSION_ID" 'del(.[$sid])' "$SESSIONS_FILE" > "${SESSIONS_FILE}.tmp" && \
+        mv "${SESSIONS_FILE}.tmp" "$SESSIONS_FILE"
+    GEMINI_ARGS=(-p "$PROMPT" -o json --allowed-mcp-server-names linear -y)
+    set +e
+    RAW_OUTPUT=$(gemini "${GEMINI_ARGS[@]}" 2>"$GEMINI_STDERR")
+    GEMINI_EXIT=$?
+    set -e
+fi
+
+if [ "$GEMINI_EXIT" -ne 0 ]; then
+    echo "Gemini failed (exit $GEMINI_EXIT):" >&2
+    cat "$GEMINI_STDERR" >&2
+    exit "$GEMINI_EXIT"
+fi
 # Strip any non-JSON prefix (MCP logs may be prepended without newline)
 RESPONSE=$(echo "$RAW_OUTPUT" | perl -0777 -pe 's/^.*?(?=\{)//s')
 

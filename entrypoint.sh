@@ -3,6 +3,11 @@ set -e
 
 REPO_URL="${REPO_URL:-https://github.com/FilipChalupa/ask-code-http-cli.git}"
 
+# Keep Gemini CLI data on the same persistent volume as our session mapping,
+# but via a symlink so our files never sit inside a directory Gemini owns.
+mkdir -p /sessions/gemini
+ln -sfn /sessions/gemini /root/.gemini
+
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
