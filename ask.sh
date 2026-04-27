@@ -51,7 +51,7 @@ if [ -n "$LINEAR_API_KEY" ]; then
 fi
 PROMPT="$PROMPT Question: $QUESTION"
 
-GEMINI_ARGS=(-p "$PROMPT" -o json --allowed-mcp-server-names linear -y)
+GEMINI_ARGS=(-p "$PROMPT" -o json --allowed-mcp-server-names linear -y --skip-trust)
 if [ -n "$GEMINI_MODEL" ]; then
     GEMINI_ARGS+=(-m "$GEMINI_MODEL")
 fi
