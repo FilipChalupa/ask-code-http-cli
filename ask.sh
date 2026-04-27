@@ -52,6 +52,9 @@ fi
 PROMPT="$PROMPT Question: $QUESTION"
 
 GEMINI_ARGS=(-p "$PROMPT" -o json --allowed-mcp-server-names linear -y)
+if [ -n "$GEMINI_MODEL" ]; then
+    GEMINI_ARGS+=(-m "$GEMINI_MODEL")
+fi
 
 # Look up Gemini UUID from session mapping
 if [ -n "$SESSION_ID" ]; then
