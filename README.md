@@ -1,6 +1,6 @@
 # ask-code-agent
 
-Docker container that answers questions about the [ask-code-http-cli](https://github.com/FilipChalupa/ask-code-http-cli) or any other repository codebase using Gemini API.
+Docker container that answers questions about the [ask-code-http-cli](https://github.com/FilipChalupa/ask-code-http-cli) or any other repository codebase using Gemini API. You can point it at one or more repositories at once.
 
 ## Setup
 
@@ -14,8 +14,19 @@ Docker container that answers questions about the [ask-code-http-cli](https://gi
 
    ```
    GEMINI_API_KEY=AIza...
-   REPO_URL=https://github.com/your-org/your-repo.git
+   REPO_URLS=https://github.com/your-org/your-repo.git
    ```
+
+   `REPO_URLS` accepts **one or more** repositories separated by spaces, commas
+   or newlines. Each repo is cloned into its own subdirectory and the agent
+   considers all of them when answering:
+
+   ```
+   REPO_URLS=https://github.com/your-org/frontend.git https://github.com/your-org/backend.git
+   ```
+
+   The legacy single-repo `REPO_URL` variable still works (it is used only when
+   `REPO_URLS` is not set).
 
 3. Build and start:
    ```bash

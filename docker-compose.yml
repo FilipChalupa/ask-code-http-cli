@@ -8,10 +8,10 @@ services:
     ports:
       - "${HOST_PORT:-3000}:3000"
     volumes:
-      - repo:/repo
+      - repos:/repos
       - sessions:/sessions
     restart: unless-stopped
 
 volumes:
-  repo:
+  repos:
   sessions:

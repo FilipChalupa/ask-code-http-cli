@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-REPO_URL="${REPO_URL:-https://github.com/FilipChalupa/ask-code-http-cli.git}"
+REPOS_DIR=/repos
 
 # Keep Gemini CLI data on the same persistent volume as our session mapping,
 # but via a symlink so our files never sit inside a directory Gemini owns.
@@ -12,12 +12,25 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 
+# Print one repo URL per line. Reads REPO_URLS (preferred) or REPO_URL (legacy),
+# either of which may hold several URLs separated by commas/whitespace/newlines.
+repo_urls() {
+    local raw="${REPO_URLS:-$REPO_URL}"
+    raw="${raw:-https://github.com/FilipChalupa/ask-code-http-cli.git}"
+    echo "$raw" | tr ',\r\n\t' '    ' | xargs -n1
+}
+
+# Local directory name for a repo URL (basename without the .git suffix)
+repo_dirname() {
+    basename "$1" .git
+}
+
 # Build the authenticated git URL if GITHUB_TOKEN is set
 repo_auth_url() {
     if [ -n "$GITHUB_TOKEN" ]; then
-        echo "$REPO_URL" | sed "s|https://|https://${GITHUB_TOKEN}@|"
+        echo "$1" | sed "s|https://|https://${GITHUB_TOKEN}@|"
     else
-        echo "$REPO_URL"
+        echo "$1"
     fi
 }
 
@@ -46,12 +59,16 @@ WRAPPER
 
 configure_mcp
 
-# Clone repo on first start
-if [ ! -d /repo/.git ]; then
-    log "Cloning repository..."
-    git clone "$(repo_auth_url)" /repo
-    log "Clone complete."
-fi
+# Clone any not-yet-present repos on first start
+mkdir -p "$REPOS_DIR"
+for url in $(repo_urls); do
+    dir="$REPOS_DIR/$(repo_dirname "$url")"
+    if [ ! -d "$dir/.git" ]; then
+        log "Cloning $url ..."
+        git clone "$(repo_auth_url "$url")" "$dir"
+        log "Clone complete: $dir"
+    fi
+done
 
 ask() {
     local question="$1"
