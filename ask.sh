@@ -91,19 +91,35 @@ if [ -n "$SESSION_ID" ]; then
     fi
 fi
 
-# Run Gemini CLI (extract only the JSON object from output, MCP logs may precede it).
-# stderr is passed through so server.js logs it if gemini fails.
+# Run Gemini CLI with a few retries. The model occasionally returns an empty
+# response / malformed tool call (error type INVALID_STREAM), often when an MCP
+# tool call fails mid-stream; a plain retry almost always succeeds.
+# stderr is passed through so server.js logs it if gemini keeps failing.
 cd "$REPOS_DIR"
-RAW_OUTPUT=$(gemini "${GEMINI_ARGS[@]}")
-# Strip any non-JSON prefix (MCP logs may be prepended without newline)
-RESPONSE=$(echo "$RAW_OUTPUT" | perl -0777 -pe 's/^.*?(?=\{)//s')
+MAX_ATTEMPTS="${GEMINI_MAX_ATTEMPTS:-3}"
+ANSWER=""
+RESPONSE=""
+NEW_GEMINI_UUID=""
+attempt=1
+while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
+    # '|| true' so set -e doesn't abort before we can inspect/retry the output
+    RAW_OUTPUT=$(gemini "${GEMINI_ARGS[@]}") || true
+    # Strip any non-JSON prefix (MCP logs may be prepended without newline)
+    RESPONSE=$(echo "$RAW_OUTPUT" | perl -0777 -pe 's/^.*?(?=\{)//s')
 
-# Parse JSON output
-ANSWER=$(echo "$RESPONSE" | jq -r '.response // empty')
-NEW_GEMINI_UUID=$(echo "$RESPONSE" | jq -r '.session_id // empty')
+    # Parse JSON output
+    ANSWER=$(echo "$RESPONSE" | jq -r '.response // empty' 2>/dev/null)
+    NEW_GEMINI_UUID=$(echo "$RESPONSE" | jq -r '.session_id // empty' 2>/dev/null)
+
+    [ -n "$ANSWER" ] && break
+
+    debug "Attempt $attempt/$MAX_ATTEMPTS returned no answer; retrying..."
+    attempt=$((attempt + 1))
+    [ "$attempt" -le "$MAX_ATTEMPTS" ] && sleep 2
+done
 
 if [ -z "$ANSWER" ]; then
-    echo "No answer received. Raw response:" >&2
+    echo "No answer received after $MAX_ATTEMPTS attempts. Raw response:" >&2
     echo "$RESPONSE" >&2
     exit 1
 fi
