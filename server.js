@@ -27,8 +27,11 @@ function processQueue() {
 			if (err) {
 				console.error(`[${new Date().toISOString()}] Error (code=${err.code}, signal=${err.signal}): ${err.message}`)
 				if (stderr) console.error(`[${new Date().toISOString()}] Stderr: ${stderr}`)
+				// Never leak raw CLI stderr (color warnings, YOLO banners, tool
+				// errors) to the client. Keep diagnostics in the server log above
+				// and return a clean, user-facing message instead.
 				res.writeHead(500, { 'Content-Type': 'text/plain' })
-				res.end(stderr || err.message)
+				res.end('Sorry, I could not answer that right now. Please try again.\n')
 			} else {
 				// Split off SESSION_ID: line from the end of stdout
 				const lines = stdout.trimEnd().split('\n')

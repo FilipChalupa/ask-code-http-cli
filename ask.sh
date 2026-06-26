@@ -71,7 +71,7 @@ fi
 # Build prompt with optional Linear context
 PROMPT="If the question is in Czech, answer in Czech. Be concise and specific. The working directory may contain several repositories as subdirectories - consider all of them when answering. Do not modify any code - your task is only to analyze and answer questions, not to develop. Any code changes will be reset on the next query, so making edits is pointless."
 if [ -n "$LINEAR_API_KEY" ]; then
-    PROMPT="$PROMPT When relevant, search Linear for issues, comments, and project context to enrich your answer."
+    PROMPT="$PROMPT Linear is an optional source of extra context: when relevant you may search it for issues, comments, and project context. If any Linear tool call fails or returns an error, silently ignore it and answer from the repository code instead - never let a Linear failure block or appear in your answer."
 fi
 PROMPT="$PROMPT Question: $QUESTION"
 
