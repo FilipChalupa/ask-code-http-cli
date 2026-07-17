@@ -75,25 +75,44 @@ if [ -n "$LINEAR_API_KEY" ]; then
 fi
 PROMPT="$PROMPT Question: $QUESTION"
 
-GEMINI_ARGS=(-p "$PROMPT" -o json --allowed-mcp-server-names linear -y --skip-trust)
+GEMINI_ARGS=(-o json --allowed-mcp-server-names linear -y --skip-trust)
 if [ -n "$GEMINI_MODEL" ]; then
     GEMINI_ARGS+=(-m "$GEMINI_MODEL")
 fi
 
 # Look up Gemini UUID from session mapping
+GEMINI_UUID=""
 if [ -n "$SESSION_ID" ]; then
     GEMINI_UUID=$(jq -r --arg sid "$SESSION_ID" '.[$sid] // empty' "$SESSIONS_FILE")
     if [ -n "$GEMINI_UUID" ]; then
-        GEMINI_ARGS+=(--resume "$GEMINI_UUID")
         debug "Resuming session $SESSION_ID -> $GEMINI_UUID"
     else
         debug "New session: $SESSION_ID"
     fi
 fi
 
+# We keep our own transcript of each thread (Q/A pairs) alongside the session
+# mapping. When resuming a Gemini session keeps failing, the last attempt
+# starts a fresh session with this transcript injected into the prompt, so the
+# thread context survives even though the Gemini-side history is abandoned.
+TRANSCRIPTS_DIR="$(dirname "$SESSIONS_FILE")/transcripts"
+TRANSCRIPT_FILE=""
+FALLBACK_PROMPT="$PROMPT"
+if [ -n "$SESSION_ID" ]; then
+    TRANSCRIPT_FILE="$TRANSCRIPTS_DIR/$SESSION_ID.txt"
+    if [ -f "$TRANSCRIPT_FILE" ]; then
+        FALLBACK_PROMPT="Earlier messages in this conversation, oldest first (Q is the user, A is you):
+$(cat "$TRANSCRIPT_FILE")
+
+$PROMPT"
+    fi
+fi
+
 # Run Gemini CLI with a few retries. The model occasionally returns an empty
 # response / malformed tool call (error type INVALID_STREAM), often when an MCP
-# tool call fails mid-stream; a plain retry almost always succeeds.
+# tool call fails mid-stream. These failures come in streaks tied to a resumed
+# session, so plain resume retries don't always recover - the final attempt
+# drops --resume and falls back to a fresh session + our transcript instead.
 # stderr is passed through so server.js logs it if gemini keeps failing.
 cd "$REPOS_DIR"
 MAX_ATTEMPTS="${GEMINI_MAX_ATTEMPTS:-3}"
@@ -102,8 +121,18 @@ RESPONSE=""
 NEW_GEMINI_UUID=""
 attempt=1
 while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
+    ATTEMPT_ARGS=("${GEMINI_ARGS[@]}")
+    if [ -n "$GEMINI_UUID" ] && { [ "$attempt" -lt "$MAX_ATTEMPTS" ] || [ "$MAX_ATTEMPTS" -eq 1 ]; }; then
+        ATTEMPT_ARGS+=(--resume "$GEMINI_UUID" -p "$PROMPT")
+    elif [ -n "$GEMINI_UUID" ]; then
+        debug "Resume kept failing; falling back to a fresh session with transcript"
+        ATTEMPT_ARGS+=(-p "$FALLBACK_PROMPT")
+    else
+        ATTEMPT_ARGS+=(-p "$PROMPT")
+    fi
+
     # '|| true' so set -e doesn't abort before we can inspect/retry the output
-    RAW_OUTPUT=$(gemini "${GEMINI_ARGS[@]}") || true
+    RAW_OUTPUT=$(gemini "${ATTEMPT_ARGS[@]}") || true
     # Strip any non-JSON prefix (MCP logs may be prepended without newline)
     RESPONSE=$(echo "$RAW_OUTPUT" | perl -0777 -pe 's/^.*?(?=\{)//s')
 
@@ -129,6 +158,15 @@ if [ -n "$SESSION_ID" ] && [ -n "$NEW_GEMINI_UUID" ]; then
     jq --arg sid "$SESSION_ID" --arg uuid "$NEW_GEMINI_UUID" \
         '.[$sid] = $uuid' "$SESSIONS_FILE" > "${SESSIONS_FILE}.tmp" && \
         mv "${SESSIONS_FILE}.tmp" "$SESSIONS_FILE"
+fi
+
+# Append this exchange to the thread transcript (kept to the newest ~16 kB)
+# so a future fresh-session fallback can restore the context.
+if [ -n "$TRANSCRIPT_FILE" ]; then
+    mkdir -p "$TRANSCRIPTS_DIR"
+    printf 'Q: %s\nA: %s\n---\n' "$QUESTION" "$ANSWER" >> "$TRANSCRIPT_FILE"
+    tail -c 16000 "$TRANSCRIPT_FILE" > "${TRANSCRIPT_FILE}.tmp" && \
+        mv "${TRANSCRIPT_FILE}.tmp" "$TRANSCRIPT_FILE"
 fi
 
 # Output answer, and session tag as last line (for server.js to parse)
