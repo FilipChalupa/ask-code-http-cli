@@ -73,6 +73,30 @@ function processQueue() {
 
 const server = http.createServer((req, res) => {
 	if (req.method === 'GET') {
+		// Test endpoint: GET /delay/240 responds after 240 s. Lets us check
+		// whether slow answers survive the network path (NAT, port proxies)
+		// without spending a real Gemini call.
+		const delayMatch = req.url.match(/^\/delay\/(\d{1,3})$/)
+		if (delayMatch) {
+			const seconds = Number(delayMatch[1])
+			console.log(`[${new Date().toISOString()}] Delay test started: ${seconds}s`)
+			res.on('close', () => {
+				if (!res.writableEnded) {
+					console.warn(
+						`[${new Date().toISOString()}] Delay test: client disconnected before ${seconds}s elapsed`,
+					)
+				}
+			})
+			setTimeout(() => {
+				res.writeHead(200, { 'Content-Type': 'text/plain' })
+				res.end(`ok after ${seconds}s\n`)
+				console.log(
+					`[${new Date().toISOString()}] Delay test finished: ${seconds}s${res.destroyed ? ' - client already gone' : ''}`,
+				)
+			}, seconds * 1000)
+			return
+		}
+
 		res.writeHead(200, { 'Content-Type': 'text/plain' })
 		res.end(`ok\nqueued: ${queue.length}\nbusy: ${running}\n`)
 		return
@@ -102,6 +126,13 @@ const server = http.createServer((req, res) => {
 		queue.push({ question, sessionId, res })
 		processQueue()
 	})
+})
+
+// While an answer is being computed the connection is silent for minutes;
+// NAT tables and port proxies on the way may drop such idle connections.
+// TCP keep-alive probes every 30 s keep the path open.
+server.on('connection', (socket) => {
+	socket.setKeepAlive(true, 30000)
 })
 
 server.listen(PORT, () => {
