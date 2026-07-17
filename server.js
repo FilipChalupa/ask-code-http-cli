@@ -10,10 +10,21 @@ function processQueue() {
 	if (running || queue.length === 0) return
 	running = true
 	const { question, sessionId, res } = queue.shift()
+	const startedAt = Date.now()
 
 	console.log(
 		`[${new Date().toISOString()}] Processing: ${question}${sessionId ? ` (session: ${sessionId})` : ''} (${queue.length} queued)`,
 	)
+
+	// The client (e.g. the Slack bridge) may give up on a slow answer; the
+	// answer then silently goes nowhere. Log it so lost answers are visible.
+	res.on('close', () => {
+		if (!res.writableEnded) {
+			console.warn(
+				`[${new Date().toISOString()}] Client disconnected after ${Math.round((Date.now() - startedAt) / 1000)}s, before the answer could be sent${sessionId ? ` (session: ${sessionId})` : ''}`,
+			)
+		}
+	})
 
 	const args = [question]
 	if (sessionId) args.push(sessionId)
@@ -45,7 +56,7 @@ function processQueue() {
 				const answer = lines.join('\n')
 
 				console.log(
-					`[${new Date().toISOString()}] Done.${geminiSessionId ? ` (gemini session: ${geminiSessionId})` : ''}`,
+					`[${new Date().toISOString()}] Done in ${Math.round((Date.now() - startedAt) / 1000)}s.${geminiSessionId ? ` (gemini session: ${geminiSessionId})` : ''}${res.destroyed ? ' Client already gone - answer NOT delivered.' : ''}`,
 				)
 
 				const headers = { 'Content-Type': 'text/plain' }
