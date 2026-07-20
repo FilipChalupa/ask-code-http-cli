@@ -44,23 +44,28 @@ repo_auth_url() {
     fi
 }
 
-# Always fetch the latest code for every configured repo before answering
+# Always fetch the latest code for every configured repo before answering.
+# Server may run several ask.sh instances at once; the flock makes sure only
+# one of them touches the git checkouts at a time.
 debug "Fetching latest code..."
 mkdir -p "$REPOS_DIR"
-for url in $(repo_urls); do
-    dir="$REPOS_DIR/$(repo_dirname "$url")"
-    auth_url=$(repo_auth_url "$url")
-    if [ ! -d "$dir/.git" ]; then
-        debug "Cloning $url ..."
-        git clone "$auth_url" "$dir" 2>/dev/null || \
-            echo "Warning: could not clone $url" >&2
-        continue
-    fi
-    git -C "$dir" remote set-url origin "$auth_url" 2>/dev/null
-    git -C "$dir" fetch origin 2>/dev/null && \
-        git -C "$dir" reset --hard '@{u}' >/dev/null 2>/dev/null || \
-        echo "Warning: could not update $dir, using cached version" >&2
-done
+(
+    flock 9
+    for url in $(repo_urls); do
+        dir="$REPOS_DIR/$(repo_dirname "$url")"
+        auth_url=$(repo_auth_url "$url")
+        if [ ! -d "$dir/.git" ]; then
+            debug "Cloning $url ..."
+            git clone "$auth_url" "$dir" 2>/dev/null || \
+                echo "Warning: could not clone $url" >&2
+            continue
+        fi
+        git -C "$dir" remote set-url origin "$auth_url" 2>/dev/null
+        git -C "$dir" fetch origin 2>/dev/null && \
+            git -C "$dir" reset --hard '@{u}' >/dev/null 2>/dev/null || \
+            echo "Warning: could not update $dir, using cached version" >&2
+    done
+) 9>"$REPOS_DIR/.fetch.lock"
 
 # Ensure sessions file exists
 mkdir -p "$(dirname "$SESSIONS_FILE")"
@@ -153,20 +158,27 @@ if [ -z "$ANSWER" ]; then
     exit 1
 fi
 
-# Save session mapping if session ID was provided
+# Save session mapping if session ID was provided. Locked - concurrent
+# ask.sh instances of other sessions rewrite the same file.
 if [ -n "$SESSION_ID" ] && [ -n "$NEW_GEMINI_UUID" ]; then
-    jq --arg sid "$SESSION_ID" --arg uuid "$NEW_GEMINI_UUID" \
-        '.[$sid] = $uuid' "$SESSIONS_FILE" > "${SESSIONS_FILE}.tmp" && \
-        mv "${SESSIONS_FILE}.tmp" "$SESSIONS_FILE"
+    (
+        flock 9
+        jq --arg sid "$SESSION_ID" --arg uuid "$NEW_GEMINI_UUID" \
+            '.[$sid] = $uuid' "$SESSIONS_FILE" > "${SESSIONS_FILE}.tmp" && \
+            mv "${SESSIONS_FILE}.tmp" "$SESSIONS_FILE"
+    ) 9>"${SESSIONS_FILE}.lock"
 fi
 
 # Append this exchange to the thread transcript (kept to the newest ~16 kB)
 # so a future fresh-session fallback can restore the context.
 if [ -n "$TRANSCRIPT_FILE" ]; then
     mkdir -p "$TRANSCRIPTS_DIR"
-    printf 'Q: %s\nA: %s\n---\n' "$QUESTION" "$ANSWER" >> "$TRANSCRIPT_FILE"
-    tail -c 16000 "$TRANSCRIPT_FILE" > "${TRANSCRIPT_FILE}.tmp" && \
-        mv "${TRANSCRIPT_FILE}.tmp" "$TRANSCRIPT_FILE"
+    (
+        flock 9
+        printf 'Q: %s\nA: %s\n---\n' "$QUESTION" "$ANSWER" >> "$TRANSCRIPT_FILE"
+        tail -c 16000 "$TRANSCRIPT_FILE" > "${TRANSCRIPT_FILE}.tmp" && \
+            mv "${TRANSCRIPT_FILE}.tmp" "$TRANSCRIPT_FILE"
+    ) 9>"${TRANSCRIPT_FILE}.lock"
 fi
 
 # Output answer, and session tag as last line (for server.js to parse)

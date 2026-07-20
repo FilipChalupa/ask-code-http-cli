@@ -2,14 +2,29 @@ const http = require('http')
 const { execFile } = require('child_process')
 
 const PORT = process.env.PORT || 3000
+const ASK_SCRIPT = process.env.ASK_SCRIPT || '/ask.sh'
+// How many questions may be answered at once. Questions from the same
+// session (Slack thread) always run one at a time - they share a Gemini
+// session and must not race on it.
+const CONCURRENCY = Number(process.env.CONCURRENCY) || 2
 
 const queue = []
-let running = false
+let activeCount = 0
+const activeSessions = new Set()
 
 function processQueue() {
-	if (running || queue.length === 0) return
-	running = true
-	const { question, sessionId, res } = queue.shift()
+	while (activeCount < CONCURRENCY) {
+		const index = queue.findIndex(
+			(item) => !item.sessionId || !activeSessions.has(item.sessionId),
+		)
+		if (index === -1) return
+		runItem(queue.splice(index, 1)[0])
+	}
+}
+
+function runItem({ question, sessionId, res }) {
+	activeCount++
+	if (sessionId) activeSessions.add(sessionId)
 	const startedAt = Date.now()
 
 	console.log(
@@ -30,13 +45,14 @@ function processQueue() {
 	if (sessionId) args.push(sessionId)
 
 	execFile(
-		'/ask.sh',
+		ASK_SCRIPT,
 		args,
 		// Up to 3 gemini attempts (incl. fresh-session fallback) can take a
 		// while; must stay under the Node-RED bridge timeout (600s).
 		{ timeout: 540000 },
 		(err, stdout, stderr) => {
-			running = false
+			activeCount--
+			if (sessionId) activeSessions.delete(sessionId)
 			if (err) {
 				console.error(`[${new Date().toISOString()}] Error (code=${err.code}, signal=${err.signal}): ${err.message}`)
 				if (stderr) console.error(`[${new Date().toISOString()}] Stderr: ${stderr}`)
@@ -100,7 +116,7 @@ const server = http.createServer((req, res) => {
 		}
 
 		res.writeHead(200, { 'Content-Type': 'text/plain' })
-		res.end(`ok\nqueued: ${queue.length}\nbusy: ${running}\n`)
+		res.end(`ok\nqueued: ${queue.length}\nbusy: ${activeCount}/${CONCURRENCY}\n`)
 		return
 	}
 
