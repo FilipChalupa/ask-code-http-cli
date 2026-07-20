@@ -50,8 +50,18 @@ export LINEAR_API_KEY="$LINEAR_API_KEY"
 exec linear-mcp
 WRAPPER
         chmod +x /linear-mcp.sh
+        # Read-only tool whitelist: the agent must never write to Linear, and
+        # fewer tools also mean less prompt surface for malformed calls.
         mcp_servers=$(echo "$mcp_servers" | jq \
-            '.linear = {"command": "/linear-mcp.sh"}')
+            '.linear = {
+                "command": "/linear-mcp.sh",
+                "includeTools": [
+                    "get_issue", "list_issues", "search_issues",
+                    "list_comments", "get_comment", "list_documents",
+                    "list_teams", "list_projects", "get_status_map",
+                    "list_attachments"
+                ]
+            }')
     fi
 
     echo "{\"mcpServers\": $mcp_servers}" | jq . > "$gemini_dir/settings.json"
