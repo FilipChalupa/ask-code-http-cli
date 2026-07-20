@@ -32,7 +32,9 @@ function processQueue() {
 	execFile(
 		'/ask.sh',
 		args,
-		{ timeout: 300000 },
+		// Up to 3 gemini attempts (incl. fresh-session fallback) can take a
+		// while; must stay under the Node-RED bridge timeout (600s).
+		{ timeout: 540000 },
 		(err, stdout, stderr) => {
 			running = false
 			if (err) {
