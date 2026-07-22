@@ -12,27 +12,7 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 
-# Print one repo URL per line. Reads REPO_URLS (preferred) or REPO_URL (legacy),
-# either of which may hold several URLs separated by commas/whitespace/newlines.
-repo_urls() {
-    local raw="${REPO_URLS:-$REPO_URL}"
-    raw="${raw:-https://github.com/FilipChalupa/ask-code-http-cli.git}"
-    echo "$raw" | tr ',\r\n\t' '    ' | xargs -n1
-}
-
-# Local directory name for a repo URL (basename without the .git suffix)
-repo_dirname() {
-    basename "$1" .git
-}
-
-# Build the authenticated git URL if GITHUB_TOKEN is set
-repo_auth_url() {
-    if [ -n "$GITHUB_TOKEN" ]; then
-        echo "$1" | sed "s|https://|https://${GITHUB_TOKEN}@|"
-    else
-        echo "$1"
-    fi
-}
+. /repo-lib.sh
 
 # Configure Gemini CLI MCP servers
 configure_mcp() {

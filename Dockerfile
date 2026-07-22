@@ -14,6 +14,7 @@ RUN npm install -g @google/gemini-cli @hatcloud/linear-mcp
 RUN mkdir -p /repos
 WORKDIR /repos
 
+COPY repo-lib.sh /repo-lib.sh
 COPY ask.sh /ask.sh
 COPY server.js /server.js
 COPY entrypoint.sh /entrypoint.sh

@@ -24,25 +24,7 @@ fi
 
 REPOS_DIR=/repos
 
-# Print one repo URL per line. Reads REPO_URLS (preferred) or REPO_URL (legacy),
-# either of which may hold several URLs separated by commas/whitespace/newlines.
-repo_urls() {
-    local raw="${REPO_URLS:-$REPO_URL}"
-    raw="${raw:-https://github.com/FilipChalupa/ask-code-http-cli.git}"
-    echo "$raw" | tr ',\r\n\t' '    ' | xargs -n1
-}
-
-repo_dirname() {
-    basename "$1" .git
-}
-
-repo_auth_url() {
-    if [ -n "$GITHUB_TOKEN" ]; then
-        echo "$1" | sed "s|https://|https://${GITHUB_TOKEN}@|"
-    else
-        echo "$1"
-    fi
-}
+. /repo-lib.sh
 
 # Always fetch the latest code for every configured repo before answering.
 # Server may run several ask.sh instances at once; the flock makes sure only
