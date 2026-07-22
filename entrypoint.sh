@@ -60,30 +60,26 @@ for url in $(repo_urls); do
     fi
 done
 
+# With set -e a failing ask.sh exits the script with its status right away,
+# so no exit-code bookkeeping is needed here.
 ask() {
     local question="$1"
     log "Question received: $question"
     log "Thinking..."
     /ask.sh "$question"
-    local status=$?
-    if [ $status -eq 0 ]; then
-        log "Done."
-    else
-        log "ask.sh exited with status $status"
-    fi
-    return $status
+    log "Done."
 }
 
 # If a question is passed as an argument
 if [ $# -gt 0 ]; then
     ask "$*"
-    exit $?
+    exit 0
 fi
 
 # If QUESTION env var is set (e.g. from Home Assistant / Slack)
 if [ -n "$QUESTION" ]; then
     ask "$QUESTION"
-    exit $?
+    exit 0
 fi
 
 # Default: start web server (docker exec /ask.sh still works too)
