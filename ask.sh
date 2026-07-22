@@ -8,6 +8,10 @@ SESSION_ID="$2"
 SESSIONS_FILE="/sessions/sessions.json"
 VERBOSE="${VERBOSE:-0}"
 
+# The session id (e.g. an X-Session-Id header) becomes part of file paths -
+# restrict it to safe characters so it cannot escape the transcripts directory.
+SESSION_ID="${SESSION_ID//[^a-zA-Z0-9._-]/_}"
+
 debug() {
     [ "$VERBOSE" = "1" ] && echo "$@" >&2 || true
 }
