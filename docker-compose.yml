@@ -2,6 +2,9 @@ services:
   agent:
     build: .
     container_name: ask-code-agent
+    # tini as PID 1 reaps gemini processes orphaned when ask.sh is killed on
+    # timeout - without it they linger as zombies under node.
+    init: true
     env_file: .env
     environment:
       - QUESTION=${QUESTION:-}
