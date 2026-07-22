@@ -49,7 +49,10 @@ function runItem({ question, sessionId, res }) {
 		args,
 		// Up to 3 gemini attempts (incl. fresh-session fallback) can take a
 		// while; must stay under the Node-RED bridge timeout (600s).
-		{ timeout: 540000 },
+		// maxBuffer raised from the 1 MiB default: gemini's stderr (MCP logs,
+		// warnings) over several attempts could overflow it and turn an
+		// otherwise good answer into an error.
+		{ timeout: 540000, maxBuffer: 10 * 1024 * 1024 },
 		(err, stdout, stderr) => {
 			activeCount--
 			if (sessionId) activeSessions.delete(sessionId)
