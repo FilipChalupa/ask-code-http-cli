@@ -83,6 +83,9 @@ curl -X POST http://localhost:3000 \
 
 Without the header, each request is stateless.
 
+Sessions unused for more than 90 days are pruned automatically (override with
+`SESSION_PRUNE_DAYS` in `.env`).
+
 #### Health check
 
 ```bash

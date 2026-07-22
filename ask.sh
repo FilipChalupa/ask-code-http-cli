@@ -59,6 +59,28 @@ if [ ! -f "$SESSIONS_FILE" ]; then
     echo '{}' > "$SESSIONS_FILE"
 fi
 
+TRANSCRIPTS_DIR="$(dirname "$SESSIONS_FILE")/transcripts"
+
+# Prune session records untouched for PRUNE_DAYS. A transcript's mtime marks
+# the session's last use: old transcripts (and their .lock files) are deleted,
+# mapping entries whose transcript is gone are dropped, and Gemini-side session
+# data under ~/.gemini/tmp is expired the same way. Best-effort - a prune
+# failure must never block answering.
+PRUNE_DAYS="${SESSION_PRUNE_DAYS:-90}"
+(
+    flock 9
+    if [ -d "$TRANSCRIPTS_DIR" ]; then
+        find "$TRANSCRIPTS_DIR" -maxdepth 1 -type f -mtime +"$PRUNE_DAYS" -delete 2>/dev/null || true
+        KEEP=$(find "$TRANSCRIPTS_DIR" -maxdepth 1 -name '*.txt' -printf '%f\n' 2>/dev/null \
+            | sed 's/\.txt$//' | jq -R . | jq -s .) || KEEP='[]'
+        jq --argjson keep "$KEEP" \
+            'with_entries(select(.key as $k | $keep | index($k) != null))' \
+            "$SESSIONS_FILE" > "${SESSIONS_FILE}.tmp" 2>/dev/null && \
+            mv "${SESSIONS_FILE}.tmp" "$SESSIONS_FILE" || true
+    fi
+    find /root/.gemini/tmp -mindepth 1 -mtime +"$PRUNE_DAYS" -delete 2>/dev/null || true
+) 9>"${SESSIONS_FILE}.lock"
+
 # Build prompt with optional Linear context
 PROMPT="If the question is in Czech, answer in Czech. Be concise and specific. Do not greet the user or address them by name, do not thank them, and do not add closing pleasantries such as offers of further help - reply with the answer itself and nothing else. Write plain text without any Markdown syntax - the answer is displayed in places like Slack that do not render Markdown: no headings (#), no bold or italic markers (** or __ or *), no tables, no inline code backticks unless quoting actual code; structure the answer with short paragraphs and simple lists starting with '- '. The working directory may contain several repositories as subdirectories - consider all of them when answering. Do not modify any code - your task is only to analyze and answer questions, not to develop. Any code changes will be reset on the next query, so making edits is pointless."
 if [ -n "$LINEAR_API_KEY" ]; then
@@ -86,7 +108,6 @@ fi
 # mapping. When resuming a Gemini session keeps failing, the last attempt
 # starts a fresh session with this transcript injected into the prompt, so the
 # thread context survives even though the Gemini-side history is abandoned.
-TRANSCRIPTS_DIR="$(dirname "$SESSIONS_FILE")/transcripts"
 TRANSCRIPT_FILE=""
 FALLBACK_PROMPT="$PROMPT"
 if [ -n "$SESSION_ID" ]; then
@@ -144,6 +165,19 @@ if [ -z "$ANSWER" ]; then
     exit 1
 fi
 
+# Append this exchange to the thread transcript (kept to the newest ~16 kB)
+# so a future fresh-session fallback can restore the context. Written before
+# the session mapping: pruning keeps only mappings backed by a transcript.
+if [ -n "$TRANSCRIPT_FILE" ]; then
+    mkdir -p "$TRANSCRIPTS_DIR"
+    (
+        flock 9
+        printf 'Q: %s\nA: %s\n---\n' "$QUESTION" "$ANSWER" >> "$TRANSCRIPT_FILE"
+        tail -c 16000 "$TRANSCRIPT_FILE" > "${TRANSCRIPT_FILE}.tmp" && \
+            mv "${TRANSCRIPT_FILE}.tmp" "$TRANSCRIPT_FILE"
+    ) 9>"${TRANSCRIPT_FILE}.lock"
+fi
+
 # Save session mapping if session ID was provided. Locked - concurrent
 # ask.sh instances of other sessions rewrite the same file.
 if [ -n "$SESSION_ID" ] && [ -n "$NEW_GEMINI_UUID" ]; then
@@ -153,18 +187,6 @@ if [ -n "$SESSION_ID" ] && [ -n "$NEW_GEMINI_UUID" ]; then
             '.[$sid] = $uuid' "$SESSIONS_FILE" > "${SESSIONS_FILE}.tmp" && \
             mv "${SESSIONS_FILE}.tmp" "$SESSIONS_FILE"
     ) 9>"${SESSIONS_FILE}.lock"
-fi
-
-# Append this exchange to the thread transcript (kept to the newest ~16 kB)
-# so a future fresh-session fallback can restore the context.
-if [ -n "$TRANSCRIPT_FILE" ]; then
-    mkdir -p "$TRANSCRIPTS_DIR"
-    (
-        flock 9
-        printf 'Q: %s\nA: %s\n---\n' "$QUESTION" "$ANSWER" >> "$TRANSCRIPT_FILE"
-        tail -c 16000 "$TRANSCRIPT_FILE" > "${TRANSCRIPT_FILE}.tmp" && \
-            mv "${TRANSCRIPT_FILE}.tmp" "$TRANSCRIPT_FILE"
-    ) 9>"${TRANSCRIPT_FILE}.lock"
 fi
 
 # Output answer, and session tag as last line (for server.js to parse)
