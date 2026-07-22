@@ -25,11 +25,29 @@ repo_dirname() {
     fi
 }
 
-# Build the authenticated git URL if GITHUB_TOKEN is set
+# Build the authenticated git URL for a repo. The credential is picked by host:
+# GITHUB_TOKEN for github.com, BITBUCKET_TOKEN for bitbucket.org (which expects
+# the x-token-auth:TOKEN@ form). URLs that already embed credentials
+# (https://user:secret@host/...) are passed through untouched, so mixing hosts
+# and hand-authenticated URLs in REPO_URLS is safe.
 repo_auth_url() {
-    if [ -n "$GITHUB_TOKEN" ]; then
-        echo "$1" | sed "s|https://|https://${GITHUB_TOKEN}@|"
-    else
-        echo "$1"
-    fi
+    local url="$1"
+    case "$url" in
+        https://*@*)
+            echo "$url" ;;
+        https://github.com/*)
+            if [ -n "$GITHUB_TOKEN" ]; then
+                echo "$url" | sed "s|https://|https://${GITHUB_TOKEN}@|"
+            else
+                echo "$url"
+            fi ;;
+        https://bitbucket.org/*)
+            if [ -n "$BITBUCKET_TOKEN" ]; then
+                echo "$url" | sed "s|https://|https://x-token-auth:${BITBUCKET_TOKEN}@|"
+            else
+                echo "$url"
+            fi ;;
+        *)
+            echo "$url" ;;
+    esac
 }

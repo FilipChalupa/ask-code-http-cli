@@ -35,10 +35,22 @@ Docker container that answers questions about the [ask-code-http-cli](https://gi
 
 ### Optional: Private repositories
 
-For private repos, create a fine-grained GitHub PAT with **Contents: read** permission and add it to `.env`:
+For private GitHub repos, create a fine-grained GitHub PAT with **Contents: read** permission and add it to `.env`:
 
 ```
 GITHUB_TOKEN=github_pat_...
+```
+
+For private Bitbucket repos, create a [repository or workspace access token](https://support.atlassian.com/bitbucket-cloud/docs/access-tokens/) with **Repositories: read** permission:
+
+```
+BITBUCKET_TOKEN=...
+```
+
+The tokens are applied by host — `GITHUB_TOKEN` to `github.com` URLs, `BITBUCKET_TOKEN` to `bitbucket.org` URLs — so both can be set at once. For other hosts (e.g. GitLab or self-hosted), embed the credentials directly in the URL in `REPO_URLS`; such URLs are used as-is:
+
+```
+REPO_URLS=https://oauth2:glpat-...@gitlab.com/your-org/your-repo.git
 ```
 
 ### Optional: Linear integration
