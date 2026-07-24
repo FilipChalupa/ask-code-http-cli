@@ -29,6 +29,7 @@ fi
 REPOS_DIR=/repos
 
 . /repo-lib.sh
+. /slack-lib.sh
 
 # Always fetch the latest code for every configured repo before answering.
 # Server may run several ask.sh instances at once; the flock makes sure only
@@ -81,10 +82,23 @@ PRUNE_DAYS="${SESSION_PRUNE_DAYS:-90}"
     find /root/.gemini/tmp -mindepth 1 -mtime +"$PRUNE_DAYS" -delete 2>/dev/null || true
 ) 9>"${SESSIONS_FILE}.lock"
 
+# Expand any Slack permalinks in the question into the linked threads'
+# content so the agent can read the referenced discussion. Optional - does
+# nothing without SLACK_BOT_TOKEN or without links in the question.
+SLACK_CONTEXT=""
+if [ -n "$SLACK_BOT_TOKEN" ]; then
+    SLACK_CONTEXT=$(slack_context_for_question "$QUESTION") || SLACK_CONTEXT=""
+fi
+
 # Build prompt with optional Linear context
 PROMPT="If the question is in Czech, answer in Czech. Be concise and specific. Do not greet the user or address them by name, do not thank them, and do not add closing pleasantries such as offers of further help - reply with the answer itself and nothing else. Write plain text without any Markdown syntax - the answer is displayed in places like Slack that do not render Markdown: no headings (#), no bold or italic markers (** or __ or *), no tables, no inline code backticks unless quoting actual code; structure the answer with short paragraphs and simple lists starting with '- '. The working directory may contain several repositories as subdirectories - consider all of them when answering. Do not modify any code - your task is only to analyze and answer questions, not to develop. Any code changes will be reset on the next query, so making edits is pointless."
 if [ -n "$LINEAR_API_KEY" ]; then
     PROMPT="$PROMPT Linear is an optional source of extra context: when relevant you may search it for issues, comments, and project context. When calling search_issues, pass only the query parameter; the team and assignee filters require UUIDs and fail when given names, so never pass names to them. If any Linear tool call fails or returns an error, silently ignore it and answer from the repository code instead - never let a Linear failure block or appear in your answer."
+fi
+if [ -n "$SLACK_CONTEXT" ]; then
+    PROMPT="$PROMPT The question links to Slack threads; their content follows.
+$SLACK_CONTEXT
+"
 fi
 PROMPT="$PROMPT Question: $QUESTION"
 

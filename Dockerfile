@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install -y \
     git \
     jq \
     ripgrep \
+    curl \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -16,6 +17,7 @@ RUN mkdir -p /repos
 WORKDIR /repos
 
 COPY repo-lib.sh /repo-lib.sh
+COPY slack-lib.sh /slack-lib.sh
 COPY ask.sh /ask.sh
 COPY server.js /server.js
 COPY entrypoint.sh /entrypoint.sh

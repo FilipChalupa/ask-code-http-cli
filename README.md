@@ -67,6 +67,20 @@ The agent can also search [Linear](https://linear.app) for relevant issues, comm
 
 When configured, the agent automatically queries Linear for context related to the question alongside the codebase search. If the key is not set, the agent works with the codebase only.
 
+### Optional: Slack thread context
+
+When a question contains Slack permalinks (e.g. `https://your-workspace.slack.com/archives/C0123ABC/p1753357968123456`), the agent can fetch the linked threads and use their content as context for the answer.
+
+1. Create a [Slack app](https://api.slack.com/apps) with a bot token and the scopes **channels:history** and **users:read** (add **groups:history** for private channels)
+2. Invite the bot to the channels whose threads it should be able to read
+3. Add the token to `.env`:
+
+   ```
+   SLACK_BOT_TOKEN=xoxb-...
+   ```
+
+Up to 3 links per question are expanded, each thread capped at ~16 kB. Fetch failures (bot not in the channel, missing scope) are ignored and the agent answers from the codebase alone. If the token is not set, Slack links are left as-is.
+
 ## Usage
 
 ### HTTP server (default)
